@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Receitas guiadas e custo por pote para montar sua primeira linha de geleias." />
+    <title>Conserva Fácil</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%237d1725'/%3E%3Cpath d='M20 23h24l-2 27H22z' fill='%23f7cf64'/%3E%3Cpath d='M18 18h28v8H18z' rx='3' fill='%23fff7e8'/%3E%3Ccircle cx='32' cy='37' r='7' fill='%23c93d4f'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Fraunces:opsz,wght@9..144,650;9..144,750&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Conserva Fácil — início">
+          <span class="brand-mark" aria-hidden="true">CF</span>
+          <span>Conserva Fácil</span>
+        </a>
+        <button class="profile-button" type="button" aria-label="Abrir perfil">G</button>
+      </header>
+
+      <main>
+        <section class="hero" aria-labelledby="welcome-title">
+          <div class="hero-copy">
+            <span class="eyebrow">Sua primeira linha</span>
+            <h1 id="welcome-title">Três geleias para começar</h1>
+            <p>Escolha um sabor e siga a receita sem complicação.</p>
+          </div>
+          <img src="./assets/geleias-linha-inicial.png" alt="Três potes de geleia caseira: morango, goiaba e abacaxi com pimenta" />
+        </section>
+
+        <nav class="section-tabs" aria-label="Áreas do aplicativo">
+          <button class="tab is-active" type="button" data-view="recipes">Receitas</button>
+          <button class="tab" type="button" data-view="cost">Meu custo</button>
+          <button class="tab" type="button" data-view="catalog">Minha linha</button>
+        </nav>
+
+        <section id="recipes-view" class="view is-active" aria-labelledby="recipes-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Passo 1 de 3</span>
+              <h2 id="recipes-title">Escolha a primeira receita</h2>
+            </div>
+            <span class="progress-label">0 de 3 feitas</span>
+          </div>
+
+          <div class="recipe-grid" id="recipe-grid"></div>
+        </section>
+
+        <section id="cost-view" class="view" aria-labelledby="cost-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Passo 2 de 3</span>
+              <h2 id="cost-title">Descubra o custo por pote</h2>
+            </div>
+          </div>
+
+          <div class="calculator-card">
+            <form id="cost-form">
+              <label>Frutas <span>R$</span><input inputmode="decimal" name="fruit" value="18,00" aria-label="Custo das frutas" /></label>
+              <label>Açúcar e limão <span>R$</span><input inputmode="decimal" name="sugar" value="7,50" aria-label="Custo do açúcar e limão" /></label>
+              <label>Potes e tampas <span>R$</span><input inputmode="decimal" name="jars" value="15,00" aria-label="Custo dos potes e tampas" /></label>
+              <label>Gás e outros <span>R$</span><input inputmode="decimal" name="extras" value="5,00" aria-label="Custo de gás e outros" /></label>
+              <label>Quantos potes rendeu? <input inputmode="numeric" name="yield" value="6" aria-label="Quantidade de potes produzidos" /></label>
+            </form>
+            <div class="cost-result" aria-live="polite">
+              <span>Custo aproximado por pote</span>
+              <strong id="unit-cost">R$ 7,58</strong>
+              <p>Comece testando um preço entre <b id="price-range">R$ 15,20 e R$ 18,95</b>.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="catalog-view" class="view" aria-labelledby="catalog-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Passo 3 de 3</span>
+              <h2 id="catalog-title">Veja sua primeira linha</h2>
+            </div>
+          </div>
+          <div class="line-preview" id="line-preview"></div>
+          <p class="empty-hint" id="line-hint">Marque uma receita como feita para adicioná-la à sua linha.</p>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="recipe-dialog" class="recipe-dialog">
+      <div class="dialog-header">
+        <button class="icon-button" id="close-dialog" type="button" aria-label="Fechar receita">×</button>
+        <span class="eyebrow" id="dialog-kicker">Receita guiada</span>
+        <h2 id="dialog-title"></h2>
+        <p id="dialog-summary"></p>
+      </div>
+      <div class="dialog-body">
+        <section>
+          <h3>Você vai precisar</h3>
+          <ul class="ingredient-list" id="ingredient-list"></ul>
+        </section>
+        <section>
+          <h3>Vamos fazer</h3>
+          <ol class="steps-list" id="steps-list"></ol>
+        </section>
+        <aside class="simple-tip" id="recipe-tip"></aside>
+        <button class="primary-button" id="finish-recipe" type="button">Marcar como feita</button>
+      </div>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
