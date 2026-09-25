@@ -1,0 +1,31 @@
+import { useEffect } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import Layout from "./components/Layout";
+import { supabaseConfigured } from "./lib/supabase";
+import CostPage from "./pages/CostPage";
+import LoginPage from "./pages/LoginPage";
+import SubscriptionPage from "./pages/SubscriptionPage";
+import RecipesPage from "./pages/RecipesPage";
+import SalesPage from "./pages/SalesPage";
+import { useAuthStore } from "./stores/authStore";
+
+export default function App() {
+  const initialize = useAuthStore((state) => state.initialize);
+  const user = useAuthStore((state) => state.user);
+  const loading = useAuthStore((state) => state.loading);
+
+  useEffect(() => { initialize(); }, [initialize]);
+
+  if (loading) return <div className="grid min-h-screen place-items-center bg-canvas font-bold text-wine">Abrindo o Conserva Fácil…</div>;
+
+  const app = (
+    <Route element={supabaseConfigured && !user ? <Navigate to="/login" replace /> : <Layout />}>
+      <Route index element={<RecipesPage />} />
+      <Route path="vendas" element={<SalesPage />} />
+      <Route path="custos" element={<CostPage />} />
+      <Route path="plano" element={<SubscriptionPage />} />
+    </Route>
+  );
+
+  return <Routes>{app}<Route path="/login" element={<LoginPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
+}

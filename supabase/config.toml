@@ -1,0 +1,8 @@
+[functions.cakto-webhook]
+verify_jwt = false
+
+[functions.request-refund]
+verify_jwt = false
+
+[functions.request-subscription-cancellation]
+verify_jwt = false

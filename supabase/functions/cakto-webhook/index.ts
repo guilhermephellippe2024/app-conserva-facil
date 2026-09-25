@@ -1,0 +1,300 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+type CaktoOrder = {
+  id?: string | number;
+  refId?: string | number;
+  customer?: {
+    email?: string;
+    name?: string;
+    phone?: string;
+    phoneNumber?: string;
+    cellphone?: string;
+    mobile?: string;
+  };
+  product?: { id?: string | number; name?: string };
+  offer?: {
+    id?: string | number;
+    name?: string;
+    price?: number;
+    currency?: string;
+  };
+  paymentMethod?: string;
+  paidAt?: string;
+};
+
+type CaktoPayload = {
+  event?: string;
+  data?: CaktoOrder | CaktoOrder[];
+};
+
+const encoder = new TextEncoder();
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+function requiredEnv(name: string) {
+  const value = Deno.env.get(name)?.trim();
+  if (!value) throw new Error(`Missing environment variable: ${name}`);
+  return value;
+}
+
+function toHex(buffer: ArrayBuffer) {
+  return [...new Uint8Array(buffer)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function constantTimeEqual(left: string, right: string) {
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  if (a.length !== b.length) return false;
+
+  let difference = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    difference |= a[index] ^ b[index];
+  }
+  return difference === 0;
+}
+
+async function hasValidSignature(
+  rawBody: string,
+  timestamp: string | null,
+  signature: string | null,
+  secret: string,
+) {
+  if (!timestamp || !signature) return false;
+
+  const sentAt = Number(timestamp);
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(sentAt) || Math.abs(now - sentAt) > 300) return false;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(`${timestamp}.${rawBody}`),
+  );
+
+  return constantTimeEqual(signature, `v1=${toHex(digest)}`);
+}
+
+function normalizeEvent(event: string) {
+  const aliases: Record<string, string> = {
+    purchase_refunded: "refund",
+    refunded: "refund",
+    purchase_chargeback: "chargeback",
+    subscription_canceled: "canceled",
+  };
+  return aliases[event] ?? event;
+}
+
+function phoneLast4(customer: CaktoOrder["customer"]) {
+  const value =
+    customer?.phone ??
+    customer?.phoneNumber ??
+    customer?.cellphone ??
+    customer?.mobile ??
+    "";
+  const digits = String(value).replace(/\D/g, "");
+  return digits.length >= 4 ? digits.slice(-4) : null;
+}
+
+Deno.serve(async (request) => {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let eventKeyForFailure: string | null = null;
+
+  try {
+    const webhookSecret = requiredEnv("CAKTO_WEBHOOK_SECRET");
+    const allowedProducts = new Set(
+      requiredEnv("CAKTO_PRODUCT_IDS")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    );
+    const appUrl = requiredEnv("APP_URL").replace(/\/$/, "");
+    const supabaseUrl = requiredEnv("SUPABASE_URL");
+    const adminKey =
+      Deno.env.get("SUPABASE_SECRET_KEY")?.trim() ||
+      requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+    const rawBody = await request.text();
+    const validSignature = await hasValidSignature(
+      rawBody,
+      request.headers.get("X-Cakto-Timestamp"),
+      request.headers.get("X-Cakto-Signature"),
+      webhookSecret,
+    );
+
+    if (!validSignature) return json({ error: "Invalid webhook signature" }, 401);
+
+    const payload = JSON.parse(rawBody) as CaktoPayload;
+    const event = normalizeEvent(String(payload.event ?? ""));
+    const orders = Array.isArray(payload.data) ? payload.data : [payload.data];
+    const supportedEvents = new Set([
+      "purchase_approved",
+      "refund",
+      "chargeback",
+      "canceled",
+    ]);
+
+    if (!supportedEvents.has(event)) {
+      return json({ received: true, ignored: `Unsupported event: ${event}` });
+    }
+
+    const supabase = createClient(supabaseUrl, adminKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const results: Array<Record<string, unknown>> = [];
+
+    for (const possibleOrder of orders) {
+      const order: CaktoOrder = possibleOrder ?? {};
+      const orderId = String(order.id ?? "").trim();
+      const productId = String(order.product?.id ?? "").trim();
+      const email = order.customer?.email?.trim().toLowerCase() ?? "";
+      const customerPhoneLast4 = phoneLast4(order.customer);
+
+      if (!orderId || !productId) {
+        results.push({ ignored: true, reason: "Order or product ID missing" });
+        continue;
+      }
+      if (!allowedProducts.has(productId)) {
+        results.push({ orderId, ignored: true, reason: "Product not allowed" });
+        continue;
+      }
+      if (event === "purchase_approved" && !email) {
+        throw new Error(`Customer email missing for order ${orderId}`);
+      }
+
+      const eventKey = `${event}:${orderId}`;
+      eventKeyForFailure = eventKey;
+      const metadata = {
+        product_id: productId,
+        product_name: order.product?.name ?? null,
+        offer_id: order.offer?.id ? String(order.offer.id) : null,
+        offer_name: order.offer?.name ?? null,
+        amount: order.offer?.price ?? null,
+        currency: order.offer?.currency ?? null,
+        payment_method: order.paymentMethod ?? null,
+        customer_phone_last4: customerPhoneLast4,
+      };
+
+      const { data: previous } = await supabase
+        .from("cakto_webhook_events")
+        .select("status")
+        .eq("event_key", eventKey)
+        .maybeSingle();
+
+      if (previous?.status === "processed") {
+        results.push({ orderId, duplicate: true });
+        continue;
+      }
+
+      const { error: receivedError } = await supabase
+        .from("cakto_webhook_events")
+        .upsert(
+          {
+            event_key: eventKey,
+            event_name: event,
+            cakto_order_id: orderId,
+            status: "received",
+            metadata,
+            error_message: null,
+          },
+          { onConflict: "event_key" },
+        );
+      if (receivedError) throw receivedError;
+
+      if (event === "purchase_approved") {
+        const { error: entitlementError } = await supabase
+          .from("entitlements")
+          .upsert(
+            {
+              customer_email: email,
+              customer_name: order.customer?.name?.trim() || null,
+              customer_phone_last4: customerPhoneLast4,
+              cakto_order_id: orderId,
+              cakto_ref_id: order.refId ? String(order.refId) : null,
+              cakto_product_id: productId,
+              cakto_offer_id: order.offer?.id ? String(order.offer.id) : null,
+              product_key: "conserva-facil",
+              status: "active",
+              granted_at: order.paidAt ?? new Date().toISOString(),
+              revoked_at: null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "cakto_order_id" },
+          );
+        if (entitlementError) throw entitlementError;
+
+        const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+          redirectTo: `${appUrl}/login`,
+          data: {
+            name: order.customer?.name?.trim() || undefined,
+            source: "cakto",
+          },
+        });
+        const inviteMessage = inviteError?.message.toLowerCase() ?? "";
+        const alreadyRegistered =
+          inviteMessage.includes("already") || inviteMessage.includes("registered");
+        if (inviteError && !alreadyRegistered) throw inviteError;
+      } else {
+        const revokedStatus = event === "refund" ? "refunded" : event;
+        const { error: revokeError } = await supabase
+          .from("entitlements")
+          .update({
+            status: revokedStatus,
+            revoked_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("cakto_order_id", orderId);
+        if (revokeError) throw revokeError;
+      }
+
+      const { error: processedError } = await supabase
+        .from("cakto_webhook_events")
+        .update({ status: "processed", processed_at: new Date().toISOString() })
+        .eq("event_key", eventKey);
+      if (processedError) throw processedError;
+
+      results.push({ orderId, processed: true, event });
+    }
+
+    return json({ received: true, results });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected webhook error";
+    console.error(message);
+
+    if (eventKeyForFailure) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const adminKey =
+          Deno.env.get("SUPABASE_SECRET_KEY") ||
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (supabaseUrl && adminKey) {
+          const supabase = createClient(supabaseUrl, adminKey, {
+            auth: { autoRefreshToken: false, persistSession: false },
+          });
+          await supabase
+            .from("cakto_webhook_events")
+            .update({ status: "failed", error_message: message })
+            .eq("event_key", eventKeyForFailure);
+        }
+      } catch (loggingError) {
+        console.error("Could not persist webhook failure", loggingError);
+      }
+    }
+
+    return json({ error: message }, 500);
+  }
+});
