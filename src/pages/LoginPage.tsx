@@ -49,7 +49,7 @@ export default function LoginPage() {
           <button disabled={busy} className="rounded-xl bg-wine px-5 py-3.5 font-bold text-white disabled:opacity-60">{busy ? "Aguarde..." : "Entrar"}</button>
         </form>
         <p className="mt-5 text-center text-sm text-muted">Ainda não tem acesso?</p>
-        <a href="https://pay.cakto.com.br/q8hryz9" className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-wine px-5 py-3 text-sm font-bold text-wine transition hover:bg-blush">
+        <a href="https://pay.cakto.com.br/frq59gq_1135591" className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-wine px-5 py-3 text-sm font-bold text-wine transition hover:bg-blush">
           Criar conta
         </a>
       </section>
