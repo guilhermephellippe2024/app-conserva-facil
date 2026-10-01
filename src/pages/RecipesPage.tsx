@@ -3,6 +3,8 @@ import { recipes, type Recipe } from "../data/recipes";
 import { useAppStore } from "../stores/appStore";
 import { useAuthStore } from "../stores/authStore";
 
+const percentageFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+
 export default function RecipesPage() {
   const [selected, setSelected] = useState<Recipe | null>(null);
   const completed = useAppStore((state) => state.completedRecipes);
@@ -20,6 +22,10 @@ export default function RecipesPage() {
     .map((recipe) => ({ recipe, salesCount: globalRecipeSales[recipe.id] || 0 }))
     .sort((a, b) => b.salesCount - a.salesCount), [globalRecipeSales]);
 
+  const totalGlobalSales = useMemo(() =>
+    Object.values(globalRecipeSales).reduce((total, count) => total + count, 0),
+  [globalRecipeSales]);
+
   return (
     <>
       <div className="mb-5 flex items-end justify-between gap-5">
@@ -32,6 +38,7 @@ export default function RecipesPage() {
       <div className="grid gap-4">
         {rankedRecipes.map(({ recipe, salesCount }, index) => {
           const done = completed.includes(recipe.id);
+          const salesPercentage = totalGlobalSales > 0 ? (salesCount / totalGlobalSales) * 100 : 0;
           return (
             <article key={recipe.id} className="overflow-hidden rounded-3xl border border-line bg-white shadow-sm transition hover:shadow-xl md:grid md:grid-cols-[240px_minmax(0,1fr)]">
               <button onClick={() => setSelected(recipe)} className="relative block h-48 w-full overflow-hidden md:h-full md:min-h-56">
@@ -42,7 +49,7 @@ export default function RecipesPage() {
               <div className="p-5 relative">
                 <div className="absolute top-0 right-0 bg-blush px-3 rounded-bl-2xl-xl">
                   <p className="py-2  font-bold">
-                    {loadingGlobalSales ? "Atualizando vendas…" : <>🔥 {salesCount} {salesCount === 1 ? "venda no app" : "vendas no app"}</>}
+                    {loadingGlobalSales ? "Atualizando vendas…" : <>🔥 {percentageFormatter.format(salesPercentage)}% das vendas</>}
                   </p>
                 </div>
                 <span className="text-xs font-bold uppercase tracking-widest text-wine">{done ? "Você já fez" : "Receita guiada"}</span>

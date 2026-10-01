@@ -61,7 +61,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadGlobalRecipeSales: async (userId) => {
-    if (!supabaseConfigured || !userId) { set({ globalRecipeSales: localRecipeTotals() }); return; }
+    if (!supabaseConfigured || !userId) {
+      set({ globalRecipeSales: localRecipeTotals() });
+      return;
+    }
     set({ loadingGlobalSales: true });
     const { data, error } = await supabase.rpc("get_global_recipe_sales");
     if (error) { set({ loadingGlobalSales: false }); throw error; }

@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
+
 interface InstallPromptEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }>; }
-function isStandalone() { return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone); }
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+}
+
 export default function InstallAppNotice() {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(() => typeof window !== "undefined" && isStandalone());
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
+
   useEffect(() => {
     const handlePrompt = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPromptEvent); };
     const handleInstalled = () => { setInstalled(true); setInstallPrompt(null); };
@@ -17,20 +23,34 @@ export default function InstallAppNotice() {
     displayMode.addEventListener("change", handleModeChange);
     return () => { window.removeEventListener("beforeinstallprompt", handlePrompt); window.removeEventListener("appinstalled", handleInstalled); displayMode.removeEventListener("change", handleModeChange); };
   }, []);
+
   async function installAndroid() {
     if (!installPrompt) { setTutorialOpen(true); return; }
     await installPrompt.prompt();
     const choice = await installPrompt.userChoice;
     if (choice.outcome === "dismissed") setInstallPrompt(null);
   }
+
   if (installed) return null;
+
   return (<>
     <section className="mx-4 mt-4 overflow-hidden rounded-2xl border border-[#efd17a] bg-[#fff7da] shadow-sm sm:mx-5 md:mx-12" aria-label="Instalar aplicativo">
       <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="flex min-w-0 gap-3"><img src="/icons/icon-192.png" alt="" className="size-11 shrink-0 rounded-xl" /><div><strong className="block font-display text-lg">Tenha o Conserva Fácil no seu celular</strong><p className="mt-1 text-sm leading-5 text-muted">{isIOS ? "Adicione o ícone à Tela de Início para abrir como um aplicativo." : "Instale o aplicativo para acessar receitas, custos e vendas direto da sua tela inicial."}</p></div></div>
         <div className="flex shrink-0 flex-col gap-2 min-[430px]:flex-row">
-          {!isIOS && <button type="button" onClick={installAndroid} className="whitespace-nowrap rounded-xl bg-wine px-4 py-3 text-sm font-bold text-white shadow-sm">{installPrompt ? "Baixar no Android" : isAndroid ? "Como instalar" : "Instalar aplicativo"}</button>}
-          <button type="button" onClick={() => setTutorialOpen(true)} className="whitespace-nowrap rounded-xl border border-wine/25 bg-white px-4 py-3 text-sm font-bold text-wine">{isIOS ? "Ver como adicionar" : "Tutorial para iPhone"}</button>
+          {!isIOS &&
+            <button
+              type="button"
+              onClick={installAndroid}
+              className="whitespace-nowrap rounded-xl bg-wine px-4 py-3 text-sm font-bold text-white shadow-sm"
+            >{installPrompt ? "Baixar no Android" : isAndroid ? "Como instalar" : "Instalar aplicativo"}</button>
+          }
+
+          <button
+            type="button"
+            onClick={() => setTutorialOpen(true)}
+            className="whitespace-nowrap rounded-xl border border-wine/25 bg-white px-4 py-3 text-sm font-bold text-wine"
+          >{!isAndroid && isIOS ? "Ver como adicionar" : "Tutorial para iPhone"}</button>
         </div>
       </div>
     </section>
