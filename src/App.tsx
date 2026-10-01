@@ -4,6 +4,7 @@ import Layout from "./components/Layout";
 import { supabaseConfigured } from "./lib/supabase";
 import ActivationPage from "./pages/ActivationPage";
 import CostPage from "./pages/CostPage";
+import MarketingPage from "./pages/MarketingPage";
 import LoginPage from "./pages/LoginPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import RecipesPage from "./pages/RecipesPage";
@@ -24,9 +25,17 @@ export default function App() {
       <Route index element={<RecipesPage />} />
       <Route path="vendas" element={<SalesPage />} />
       <Route path="custos" element={<CostPage />} />
+      <Route path="divulgar" element={<MarketingPage />} />
       <Route path="plano" element={<SubscriptionPage />} />
     </Route>
   );
 
-  return <Routes>{app}<Route path="/ativar" element={<ActivationPage />} /><Route path="/login" element={<LoginPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
+  return (
+    <Routes>
+      {app}
+      <Route path="/ativar" element={<ActivationPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }

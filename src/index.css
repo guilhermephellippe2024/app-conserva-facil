@@ -15,8 +15,9 @@
 
 @layer base {
   * { box-sizing: border-box; }
-  html { min-width: 320px; }
-  body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--color-canvas); color: var(--color-ink); font-family: var(--font-sans); }
+  html { width: 100%; min-width: 0; overflow-x: clip; }
+  body { margin: 0; width: 100%; min-width: 0; min-height: 100vh; overflow-x: hidden; background: var(--color-canvas); color: var(--color-ink); font-family: var(--font-sans); }
+  #root { width: 100%; min-height: 100vh; }
   button, a, input, select { outline-color: var(--color-wine); }
   button, a { cursor: pointer; }
 }

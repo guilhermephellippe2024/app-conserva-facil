@@ -88,53 +88,25 @@ export default function SalesPage() {
 
       {message && <button onClick={() => setMessage("")} className="mb-4 w-full rounded-xl bg-blush px-4 py-2 text-sm text-wine">{message}</button>}
 
-      <section aria-label="Filtrar vendas por período" className="mb-5 rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end">
-          <label className="grid flex-1 gap-1.5 text-sm font-bold">
-            Período
-            <select value={period} onChange={(event) => setPeriod(event.target.value as PeriodFilter)} className="field">
-              <option value="all">Todas as vendas</option>
-              <option value="today">Hoje</option>
-              <option value="7days">Últimos 7 dias</option>
-              <option value="30days">Últimos 30 dias</option>
-              <option value="custom">Escolher intervalo</option>
-            </select>
-          </label>
-          {period === "custom" && (
-            <div className="grid flex-[2] gap-3 sm:grid-cols-2">
-              <label className="grid gap-1.5 text-sm font-bold">De<input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} className="field" /></label>
-              <label className="grid gap-1.5 text-sm font-bold">Até<input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} className="field" /></label>
-            </div>
-          )}
-          <span className="shrink-0 rounded-full bg-blush px-3 py-2 text-center text-xs font-bold text-wine">{filteredSales.length} {filteredSales.length === 1 ? "venda encontrada" : "vendas encontradas"}</span>
-        </div>
-      </section>
-
       <section aria-label="Resumo das vendas" className="mb-5 grid gap-3 sm:grid-cols-3">
-        <Summary label="Faturamento" value={money.format(totals.revenue)} hint="Recebido no período" />
-        <Summary label="Lucro" value={money.format(totals.profit)} hint="Depois dos custos no período" highlight />
-        <Summary label="Potes vendidos" value={String(totals.units)} hint="No período selecionado" />
+        <Summary label="Faturamento" value={money.format(totals.revenue)} hint="Total recebido" />
+        <Summary label="Lucro" value={money.format(totals.profit)} hint="Depois dos custos" highlight />
+        <Summary label="Potes vendidos" value={String(totals.units)} hint="Em todas as vendas" />
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-line bg-white shadow-sm">
         <header className="flex flex-col items-start justify-between gap-3 px-5 py-5 sm:flex-row sm:gap-4">
           <div><h2 className="font-display text-2xl font-bold">Vendas registradas</h2><p className="text-sm text-muted">As vendas mais recentes aparecem primeiro.</p></div>
-          <span className="rounded-full bg-blush px-3 py-1.5 text-xs font-bold text-wine whitespace-nowrap">{filteredSales.length} {filteredSales.length === 1 ? "venda" : "vendas"}</span>
+          <span className="rounded-full bg-blush px-3 py-1.5 text-xs font-bold text-wine whitespace-nowrap">{sales.length} {sales.length === 1 ? "venda" : "vendas"}</span>
         </header>
         {loading ? (
           <p className="border-t border-line p-10 text-center text-muted">Carregando vendas...</p>
-        ) : filteredSales.length === 0 ? (
-          <div className="grid min-h-60 place-items-center border-t border-line p-8 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-full bg-blush font-bold text-wine">$</span><strong className="mt-3 block">Nenhuma venda neste período</strong><p className="mt-1 text-sm text-muted">Escolha outro período ou registre uma nova venda.</p></div></div>
+        ) : sales.length === 0 ? (
+          <div className="grid min-h-60 place-items-center border-t border-line p-8 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-full bg-blush font-bold text-wine">$</span><strong className="mt-3 block">Nenhuma venda anotada</strong><p className="mt-1 text-sm text-muted">Quando registrar a primeira, ela aparecerá aqui.</p></div></div>
         ) : (
-          <div className="border-t border-line">
-            {groupedSales.map((group) => (
-              <section key={group.key} aria-labelledby={"period-" + group.key}>
-                <header className="flex items-center justify-between gap-3 bg-[#fcfafb] px-4 py-3 sm:px-5">
-                  <h3 id={"period-" + group.key} className="font-display text-lg font-bold capitalize">{group.label}</h3>
-                  <span className="text-xs font-semibold text-muted">{group.sales.length} {group.sales.length === 1 ? "venda" : "vendas"}</span>
-                </header>
+          <>
             <div className="divide-y divide-line border-t border-line sm:hidden">
-              {group.sales.map((sale) => {
+              {sales.map((sale) => {
                 const recipe = recipes.find((item) => item.id === sale.recipeId);
                 const revenue = sale.quantity * sale.unitPrice;
                 const profit = sale.quantity * (sale.unitPrice - sale.unitCost);
@@ -160,15 +132,13 @@ export default function SalesPage() {
             <div className="hidden max-w-full overflow-x-auto overscroll-x-contain sm:block">
               <table className="w-full border-collapse">
                 <thead><tr className="border-t border-line bg-[#fcfafb] text-left text-[11px] uppercase tracking-wide text-muted"><th className="table-cell">Data</th><th className="table-cell">Sabor</th><th className="table-cell">Cliente</th><th className="table-cell">Qtd.</th><th className="table-cell">Faturamento</th><th className="table-cell">Lucro</th><th className="w-12"><span className="sr-only">Ações</span></th></tr></thead>
-                <tbody>{group.sales.map((sale) => {
+                <tbody>{sales.map((sale) => {
                   const recipe = recipes.find((item) => item.id === sale.recipeId);
                   return <tr key={sale.id} className="border-t border-line text-sm"><td className="table-cell">{formatDate(sale.date)}</td><td className="table-cell font-bold">{recipe?.name}</td><td className="table-cell">{sale.customer || "—"}</td><td className="table-cell">{sale.quantity}</td><td className="table-cell">{money.format(sale.quantity * sale.unitPrice)}</td><td className="table-cell font-bold text-emerald">{money.format(sale.quantity * (sale.unitPrice - sale.unitCost))}</td><td className="pr-3"><button onClick={() => handleRemove(sale.id)} aria-label="Remover esta venda" className="grid size-9 place-items-center rounded-lg text-muted hover:bg-blush hover:text-wine"><TrashIcon /></button></td></tr>;
                 })}</tbody>
               </table>
             </div>
-              </section>
-            ))}
-          </div>
+          </>
         )}
       </section>
 
