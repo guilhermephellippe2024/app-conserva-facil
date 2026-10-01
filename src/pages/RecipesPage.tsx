@@ -7,33 +7,30 @@ export default function RecipesPage() {
   const [selected, setSelected] = useState<Recipe | null>(null);
   const completed = useAppStore((state) => state.completedRecipes);
   const toggleRecipe = useAppStore((state) => state.toggleRecipe);
-  const sales = useAppStore((state) => state.sales);
-  const loadSales = useAppStore((state) => state.loadSales);
-  const loadingSales = useAppStore((state) => state.loadingSales);
+  const globalRecipeSales = useAppStore((state) => state.globalRecipeSales);
+  const loadGlobalRecipeSales = useAppStore((state) => state.loadGlobalRecipeSales);
+  const loadingGlobalSales = useAppStore((state) => state.loadingGlobalSales);
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    void loadSales(user?.id).catch(() => undefined);
-  }, [loadSales, user?.id]);
+    void loadGlobalRecipeSales(user?.id).catch(() => undefined);
+  }, [loadGlobalRecipeSales, user?.id]);
 
   const rankedRecipes = useMemo(() => recipes
-    .map((recipe) => ({
-      recipe,
-      porcentSales: sales.filter((sale) => sale.recipeId === recipe.id).length / sales.length * 100,
-    }))
-    .sort((a, b) => b.porcentSales - a.porcentSales), [sales]);
+    .map((recipe) => ({ recipe, salesCount: globalRecipeSales[recipe.id] || 0 }))
+    .sort((a, b) => b.salesCount - a.salesCount), [globalRecipeSales]);
 
   return (
     <>
       <div className="mb-5 flex items-end justify-between gap-5">
         <div>
           <h1 className="font-display text-3xl font-bold md:text-4xl">Receitas que mais estão vendendo:</h1>
-          <p className="mt-2 text-muted">Esse é uma lista das receitas de geleias que mais estão vendendo.</p>
+          <p className="mt-2 text-muted">Ranking calculado com as vendas registradas por todos os usuários do aplicativo.</p>
         </div>
       </div>
 
       <div className="grid gap-4">
-        {rankedRecipes.map(({ recipe, porcentSales }, index) => {
+        {rankedRecipes.map(({ recipe, salesCount }, index) => {
           const done = completed.includes(recipe.id);
           return (
             <article key={recipe.id} className="overflow-hidden rounded-3xl border border-line bg-white shadow-sm transition hover:shadow-xl md:grid md:grid-cols-[240px_minmax(0,1fr)]">
@@ -45,7 +42,7 @@ export default function RecipesPage() {
               <div className="p-5 relative">
                 <div className="absolute top-0 right-0 bg-blush px-3 rounded-bl-2xl-xl">
                   <p className="py-2  font-bold">
-                    {loadingSales ? "Atualizando vendas…" : <>🔥 {porcentSales}% Vendas</>}
+                    {loadingGlobalSales ? "Atualizando vendas…" : <>🔥 {salesCount} {salesCount === 1 ? "venda no app" : "vendas no app"}</>}
                   </p>
                 </div>
                 <span className="text-xs font-bold uppercase tracking-widest text-wine">{done ? "Você já fez" : "Receita guiada"}</span>
